@@ -294,6 +294,22 @@ def test_uninstall_recursive(path):
     # content is dropped already, so no checks in place anyway
     ds.remove(target_fname, check=True, recursive=True)
     ok_(not exists(lname) and not lexists(lname))
+
+    from datalad.cmd import Runner
+    runner = Runner(cwd=ds.path)
+    log_out, log_err = runner.run(['git', 'log'])
+    status_out, status_err = runner.run(['git', 'status'])
+    diff_out, diff_err = runner.run(['git', 'diff'])
+
+    raise RuntimeError("DEBUG:\n"
+               "log stdout:%s\n"
+               "log stderr:%s\n"
+               "status stdout:%s\n"
+               "status stderr:%s\n"
+               "diff stdout:%s\n"
+               "diff stderr:%s\n" %
+               (log_out, log_err, status_out, status_err, diff_out, diff_err))
+
     ok_clean_git(subds.path)
     ok_clean_git(ds.path)
 

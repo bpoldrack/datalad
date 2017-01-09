@@ -228,6 +228,14 @@ def save_dataset_hierarchy(
     list
       Instances of saved datasets, in the order in which they where saved.
     """
+
+    lgr.debug("info: %s\n"
+              "base: %s\n"
+              "message: %s\n"
+              "version_tag: %s" %
+              (info, base, message, version_tag))
+
+
     if not isinstance(info, dict):
         info = assure_list(info)
         info = dict(zip(info, [[i] for i in info]))

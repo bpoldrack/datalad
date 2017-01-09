@@ -166,6 +166,11 @@ class Save(Interface):
                 bp.extend(content_by_ds[c])
             content_by_ds[dataset.path] = list(set(bp))
 
+        lgr.debug(("dataset %s is installed" % dataset)
+                  if dataset and dataset.is_installed() else
+                  "dataset: %s" % bool(dataset))
+
+
         saved_ds = save_dataset_hierarchy(
             content_by_ds,
             base=dataset.path if dataset and dataset.is_installed() else None,

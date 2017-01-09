@@ -112,6 +112,7 @@ def test_recursive_save(path):
     # no recursive
     assert_false(ds.save(all_changes=True))
     # an explicit target saves only the corresponding dataset
+
     assert_equal(save(files=[testfname]), [subsubds])
     # plain recursive without any files given will save the beast
     assert_equal(ds.save(recursive=True), [subds, ds])

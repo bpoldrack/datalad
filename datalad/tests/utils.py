@@ -189,7 +189,7 @@ def ok_clean_git(path, annex=True, head_modified=[], index_modified=[], untracke
             # troubleshooting
             head_diffs = [str(d) for d in repo.index.diff(repo.head.commit)]
             index_diffs = [str(d) for d in repo.index.diff(None)]
-            eq_(head_diffs, [])
+            eq_(head_diffs, [], "DEBUG: =============\nhead_diffs:%s\n\nindex_diffs:%s\n" % (head_diffs, index_diffs))
             eq_(index_diffs, [])
         else:
             if head_modified:

@@ -328,6 +328,18 @@ class Remove(Interface):
             recursive=False,
             check=True,
             if_dirty='save-before'):
+
+        lgr.debug(
+            "path: %s\n" % path + \
+            "dataset: %s\n" % dataset + \
+            "recursive: %s\n" % recursive + \
+            "check: %s\n" % check + \
+            "if_dirty: %s\n" % if_dirty
+
+
+
+        )
+
         if dataset:
             dataset = require_dataset(
                 dataset, check_installed=False, purpose='removal')
