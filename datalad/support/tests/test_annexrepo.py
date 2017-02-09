@@ -1549,3 +1549,26 @@ def test_AnnexRepo_dirty(path):
 
     # TODO: submodules
 
+
+@with_tempfile(mkdir=True)
+def test_AnnexRepo_set_remote_url(path):
+
+    ar = AnnexRepo(path, create=True)
+    ar.add_remote('some', 'http://example.com/.git')
+    assert_equal(ar.config['remote.some.url'],
+                 'http://example.com/.git')
+    assert_not_in('remote.some.annexurl', ar.config.keys())
+    # change url:
+    ar.set_remote_url('some', 'http://believe.it')
+    assert_equal(ar.config['remote.some.url'],
+                 'http://believe.it')
+    assert_not_in('remote.some.annexurl', ar.config.keys())
+
+    # set push url:
+    ar.set_remote_url('some', 'ssh://whatever.ru', push=True)
+    assert_equal(ar.config['remote.some.pushurl'],
+                 'ssh://whatever.ru')
+    assert_in('remote.some.annexurl', ar.config.keys())
+    assert_equal(ar.config['remote.some.annexurl'],
+                 'ssh://whatever.ru')
+
