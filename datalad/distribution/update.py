@@ -14,14 +14,11 @@ __docformat__ = 'restructuredtext'
 
 
 import logging
-from os.path import join as opj
 
 from datalad.interface.base import Interface
 from datalad.support.constraints import EnsureStr
 from datalad.support.constraints import EnsureNone
-from datalad.support.gitrepo import GitRepo
 from datalad.support.param import Parameter
-from datalad.utils import knows_annex
 from datalad.interface.common_opts import recursion_flag
 from datalad.interface.common_opts import recursion_limit
 
@@ -145,7 +142,7 @@ def _update_repo(repo, remote, merge, fetch_all):
             # what we want? Do we want to specify a refspec instead?
             # yoh: we should leave it to git and its configuration.
             # So imho we should just extract to fetch everything git would fetch
-            if knows_annex(repo.path) and not fetch_all:
+            if repo.has_annex() and not fetch_all:
                 if remote:
                     # we are updating from a certain remote, so git-annex branch
                     # should be updated from there as well:
@@ -180,7 +177,7 @@ def _update_repo(repo, remote, merge, fetch_all):
 
                 std_out, std_err = repo._git_custom_command('', cmd_list)
                 lgr.info(std_out)
-                if knows_annex(repo.path):
+                if repo.has_annex():
                     # annex-apply:
                     lgr.info("Updating annex ...")
                     std_out, std_err = repo._git_custom_command(

@@ -36,7 +36,6 @@ from datalad.support.network import PathRI
 from datalad.dochelpers import exc_str
 from datalad.utils import swallow_logs
 from datalad.utils import rmtree
-from datalad.utils import knows_annex
 from datalad.utils import with_pathsep as _with_sep
 
 from .dataset import Dataset
@@ -427,7 +426,7 @@ def _recursive_install_subds_underneath(ds, recursion_limit, reckless, start=Non
 
 def _handle_possible_annex_dataset(dataset, reckless):
     # in any case check whether we need to annex-init the installed thing:
-    if knows_annex(dataset.path):
+    if dataset.repo.has_annex():
         # init annex when traces of a remote annex can be detected
         if reckless:
             lgr.debug(

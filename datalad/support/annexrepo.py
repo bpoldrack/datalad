@@ -191,7 +191,7 @@ class AnnexRepo(GitRepo, RepoInterface):
         # XXX this doesn't work for a submodule!
         if not AnnexRepo.is_valid_repo(self.path):
             # so either it is not annex at all or just was not yet initialized
-            if self.is_with_annex():
+            if self.has_annex():
                 # it is an annex repository which was not initialized yet
                 if create or init:
                     lgr.debug('Annex repository was not yet initialized at %s.'
@@ -408,7 +408,7 @@ class AnnexRepo(GitRepo, RepoInterface):
         if allow_noninitialized:
             try:
                 return initialized_annex \
-                    or GitRepo(path, create=False, init=False).is_with_annex()
+                    or GitRepo(path, create=False, init=False).has_annex()
             except (NoSuchPathError, InvalidGitRepositoryError):
                 return False
         else:

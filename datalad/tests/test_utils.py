@@ -37,7 +37,6 @@ from ..utils import line_profile
 from ..utils import not_supported_on_windows
 from ..utils import file_basename
 from ..utils import expandpath, is_explicit_path
-from ..utils import knows_annex
 from ..utils import any_re_search
 from ..utils import unique
 from ..utils import get_func_kwargs_doc
@@ -445,19 +444,6 @@ def test_is_explicit_path():
     # by default expanded paths are absolute, hence explicit
     assert_true(is_explicit_path(expandpath('~')))
     assert_false(is_explicit_path("here"))
-
-
-@with_tempfile
-@with_tempfile
-def test_knows_annex(here, there):
-    from datalad.support.gitrepo import GitRepo
-    from datalad.support.annexrepo import AnnexRepo
-    GitRepo(path=here, create=True)
-    assert_false(knows_annex(here))
-    AnnexRepo(path=here, create=True)
-    assert_true(knows_annex(here))
-    GitRepo.clone(path=there, url=here, create=True)
-    assert_true(knows_annex(there))
 
 
 def test_make_tempfile():

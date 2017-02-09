@@ -685,17 +685,6 @@ class GitRepo(RepoInterface):
             self._cfg = ConfigManager(dataset=self, dataset_only=False)
         return self._cfg
 
-    def is_with_annex(self, only_remote=False):
-        """Return True if GitRepo (assumed) at the path has remotes with git-annex branch
-
-        Parameters
-        ----------
-        only_remote: bool, optional
-            Check only remote (no local branches) for having git-annex branch
-        """
-        return any((b.endswith('/git-annex') for b in self.get_remote_branches())) or \
-            ((not only_remote) and any((b == 'git-annex' for b in self.get_branches())))
-
     @classmethod
     def get_toppath(cls, path, follow_up=True, git_options=None):
         """Return top-level of a repository given the path.

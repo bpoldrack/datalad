@@ -170,6 +170,9 @@ class RepoInterface(object):
 
     Especially provides "annex operations" on plain git repos, that just do
     (or return) the "right thing"
+
+    Central place for methods, that make sense to be available on plain git
+    repos, but the very concepts of which require a notion of annex
     """
 
     # Note: Didn't find a way yet, to force GitRepo as well as AnnexRepo to
@@ -185,4 +188,20 @@ class RepoInterface(object):
 
     def sth_like_file_has_content(self):
         raise NotImplementedError # the real thing in case of annex and True in case of git
+
+    def has_annex(self, only_remote=False):
+        """Returns whether a repo has information about an annex
+
+        Returns True if Repo has a local or remote git-annex branch. Therefore
+        includes actually present annexes, but also uninitialized ones, or even
+        the pure presence of a remote annex branch.
+
+        Parameters
+        ----------
+        only_remote: bool, optional
+            Check only remote (no local branches) for having git-annex branch
+        """
+        return any((b.endswith('/git-annex') for b in self.get_remote_branches())) or \
+            ((not only_remote) and any((b == 'git-annex' for b in self.get_branches())))
+
 
