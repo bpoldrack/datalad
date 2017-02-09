@@ -43,6 +43,7 @@ from git.objects.blob import Blob
 from datalad import ssh_manager
 from datalad.cmd import Runner, GitRunner
 from datalad.dochelpers import exc_str
+from datalad.dochelpers import borrowdoc
 from datalad.config import ConfigManager
 from datalad.utils import assure_list
 from datalad.utils import optional_args
@@ -383,10 +384,29 @@ class GitRepo(RepoInterface):
     overridden accidentally by AnnexRepo.
     """
 
-    # Just a non-functional example:
-    # must be implemented, since abstract in RepoInterface:
-    def sth_like_file_has_content(self):
-        return "Yes, if it's in the index"
+    # Begin Abstract methods from RepoInterface:
+    @borrowdoc(RepoInterface)
+    @normalize_paths
+    def file_has_content(self, files, *args, **kwargs):
+        # TODO: Figure out how to deal with additional parameters as provided by
+        # AnnexRepo
+        # - maybe just ignore, since they are about speed not about the result
+        assert not args
+        assert not kwargs
+
+        return [f in self.get_indexed_files() for f in files]
+
+    @borrowdoc(RepoInterface)
+    @normalize_paths
+    def is_under_annex(self, files, *args, **kwargs):
+        # TODO: see above
+        assert not args
+        assert not kwargs
+
+        # TODO: Does it really make sense? Shouldn't the answer be "I don't know" instead?
+        return [False for f in files]
+
+    # End Abstract methods from RepoInterface
 
     # Begin Flyweight:
 

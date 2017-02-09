@@ -186,9 +186,6 @@ class RepoInterface(object):
 
     # Test!
 
-    def sth_like_file_has_content(self):
-        raise NotImplementedError # the real thing in case of annex and True in case of git
-
     def has_annex(self, only_remote=False):
         """Returns whether a repo has information about an annex
 
@@ -204,4 +201,34 @@ class RepoInterface(object):
         return any((b.endswith('/git-annex') for b in self.get_remote_branches())) or \
             ((not only_remote) and any((b == 'git-annex' for b in self.get_branches())))
 
+    def file_has_content(self, files, *args, **kwargs):
+        """Check whether file(s) have their content present
 
+        Parameters
+        ----------
+        files: str or list of str
+            file(s) to check for being actually present.
+
+        Returns
+        -------
+        list of bool
+            For each input file states either file has content locally
+        """
+        raise NotImplementedError
+
+    def is_under_annex(self, files, *args, **kwargs):
+        """Check whether files are under annex control
+
+        Parameters
+        ----------
+        files: list of str
+            file(s) to check for being under annex
+
+        Returns
+        -------
+        list of bool
+            For each input file states either file is under annex
+        """
+        raise NotImplementedError
+
+    # TODO from #1100: get_file_size?
