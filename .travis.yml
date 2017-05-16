@@ -121,6 +121,7 @@ matrix:
   allow_failures:
   # For now, don't fail entirely when direct mode fails
   - env: DATALAD_REPO_DIRECT=1
+    stage: test
 
 # Causes complete laptop or travis instance crash atm, but survives in a docker
 # need to figure it out (looks like some PID explosion)
