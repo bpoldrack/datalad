@@ -122,6 +122,11 @@ matrix:
     env:
     - TESTS_TO_PERFORM="datalad/tests datalad/support"
     - DATALAD_REPO_DIRECT=1
+  - python: 2.7
+    # try building with nuitka and python 2.7
+    env:
+    - _BUILD_NUITKA=1
+    - DATALAD_TESTS_SSH=1
 
   allow_failures:
   # Test under NFS mount  (full, only in master)
@@ -152,6 +157,8 @@ before_install:
   - eatmydata npm install grunt-cli
   # Install optionally upstream current development so we are sure that they break nothing important for us
   - if [ ! -z "${_DATALAD_UPSTREAM_GITPYTHON:-}" ]; then pip install https://github.com/gitpython-developers/GitPython/archive/master.zip; fi
+  # Install nuitka if required
+  - if [ ! -z "${_BUILD_NUITKA:-}" ]; then sudo apt-get install nuitka; fi
 
 install:
   # Install standalone build of git-annex for the recent enough version
@@ -177,6 +184,8 @@ install:
 script:
   # Verify that setup.py build doesn't puke
   - python setup.py build
+  # use nuitka to build binaries
+  - if [ ! -z "${_BUILD_NUITKA:-}" ]; then travis_wait 50 bash -x tools/nuitka/build_nuitka; fi
   # Run tests
   - WRAPT_DISABLE_EXTENSIONS=1 PATH=$PWD/tools/coverage-bin:$PATH $NOSE_WRAPPER `which nosetests` $NOSE_OPTS -v -A "$NOSE_SELECTION_OP(integration or usecase or slow)" --with-doctest --doctest-tests --with-cov --cover-package datalad --logging-level=INFO $TESTS_TO_PERFORM
   # Generate documentation and run doctests
