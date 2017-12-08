@@ -1632,7 +1632,8 @@ class ItemFile(Item):
             predefined exception to raise instead of CommandError to give more
             information about when what item ran into the error.
         """
-        lookup_cmd = ['git', 'annex', 'lookupkey', self._path]
+        lookup_cmd = ['git', 'annex', 'lookupkey',
+                      relpath(self._path, self._repo.path)]
         out, err = _excute_by_item(cmd=lookup_cmd, item=self, exc=exc)
         return out.strip()
 
