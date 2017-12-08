@@ -143,3 +143,6 @@ def test_MixedSubmodulesOldNested_instantiation(path):
     tr = MixedSubmodulesOldNested(path)
 
 
+@with_tempfile
+def test_BasicAnnex_instantiation(path):
+    tr = BasicAnnex(path)

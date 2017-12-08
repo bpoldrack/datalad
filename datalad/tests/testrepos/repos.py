@@ -767,7 +767,31 @@ class BasicMixed(TestRepo_NEW):
     ]
 
 
-#class BasicAnnex(TestRepo_NEW):
+class BasicAnnex(TestRepo_NEW):
+
+    version = '0.1'
+
+    _cls_item_definitions = [
+        (ItemSelf, {'path': '.',
+                    'annex': True}),
+        (ItemFile, {'path': 'test-annex.dat',
+                    'src': get_local_file_url(get_persistent_file('test-annex.dat')),
+                    'state': (ItemFile.ADDED,
+                              ItemFile.UNMODIFIED),
+                    'annexed': True,
+                    'key': "SHA256E-s28--2795fb26981c5a687b9bf44930cc220029223f472cea0f0b17274f4473181e7b.dat",
+                    'repo': '.'
+                    }),
+        (ItemInfoFile, {'state': (ItemFile.ADDED,
+                                  ItemFile.UNMODIFIED),
+                        'annexed': True,
+                        'repo': '.'}),
+        (ItemCommit, {'cwd': '.',
+                      'item': ['test-annex.dat', 'INFO.txt'],
+                      'msg': "Adding a basic INFO file and a rudimentary load "
+                             "file. Both into annex."})
+    ]
+
 #    pass
 
 
