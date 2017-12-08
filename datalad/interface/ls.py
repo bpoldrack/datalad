@@ -28,7 +28,6 @@ from ..utils import auto_repr
 from .base import Interface
 from datalad.interface.base import build_doc
 from ..ui import ui
-from ..utils import swallow_logs
 from ..utils import safe_print
 from ..consts import METADATA_DIR
 from ..consts import METADATA_FILENAME
@@ -238,12 +237,7 @@ class GitModel(object):
 
     @property
     def describe(self):
-        try:
-            with swallow_logs():
-                describe, outerr = self.repo._git_custom_command([], ['git', 'describe', '--tags'])
-            return describe.strip()
-        except:
-            return None
+        return self.repo.describe(tags=True)
 
     @property
     def date(self):
@@ -506,6 +500,11 @@ def _ls_dataset(loc, fast=False, recursive=False, all_=False, long_=False):
         fmt = fmts[dsm.__class__]
         ds_str = format_ds_model(formatter, dsm, fmt, format_exc=path_fmt + u"  {msg!R}")
         safe_print(ds_str)
+        # workaround for explosion of git cat-file --batnch processes
+        # https://github.com/datalad/datalad/issues/1888
+        dsm.repo.repo.close()
+        del dsm.repo
+        dsm.repo = None
 
 
 def machinesize(humansize):
@@ -967,8 +966,8 @@ def _ls_s3(loc, fast=False, recursive=False, all_=False, long_=False,
 
             try:
                 acl = e.get_acl()
-            except S3ResponseError as err:
-                acl = err.message
+            except S3ResponseError as exc:
+                acl = exc.code if exc.code in ('AccessDenied',) else str(exc)
 
             content = ""
             if list_content:
@@ -988,13 +987,15 @@ def _ls_s3(loc, fast=False, recursive=False, all_=False, long_=False,
                         raise ValueError(list_content)
                     # content = "[S3: OK]"
                 except S3ResponseError as err:
-                    content = err.message
+                    content = str(err)
                 finally:
                     content = " " + content
-            if long_:
-                ui.message("ver:%-32s  acl:%s  %s [%s]%s" % (e.version_id, acl, url, urlok, content))
-            else:
-                ui.message('')
+            ui.message(
+                "ver:%-32s  acl:%s  %s [%s]%s"
+                % (getattr(e, 'version_id', None),
+                   acl, url, urlok, content)
+                if long_ else ''
+            )
         else:
             ui.message(base_msg + " " + str(type(e)).split('.')[-1].rstrip("\"'>"))
     return results

@@ -23,6 +23,7 @@ import random
 import socket
 from six import PY2, text_type, iteritems
 from six import binary_type
+from six import string_types
 from fnmatch import fnmatch
 import time
 from mock import patch
@@ -98,6 +99,29 @@ def skip_if_url_is_not_available(url, regex=None):
         raise SkipTest("%s failed to download" % url)
 
 
+# TODO: eventually we might want to make use of attr module
+class File(object):
+    """Helper for a file entry in the create_tree/@with_tree
+
+    It allows to define additional settings for entries
+    """
+    def __init__(self, name, executable=False):
+        """
+
+        Parameters
+        ----------
+        name : str
+          Name of the file
+        executable: bool, optional
+          Make it executable
+        """
+        self.name = name
+        self.executable = executable
+
+    def __str__(self):
+        return self.name
+
+
 def create_tree_archive(path, name, load, overwrite=False, archives_leading_dir=True):
     """Given an archive `name`, create under `path` with specified `load` tree
     """
@@ -131,7 +155,13 @@ def create_tree(path, tree, archives_leading_dir=True):
     if isinstance(tree, dict):
         tree = tree.items()
 
-    for name, load in tree:
+    for file_, load in tree:
+        if isinstance(file_, File):
+            executable = file_.executable
+            name = file_.name
+        else:
+            executable = False
+            name = file_
         full_name = opj(path, name)
         if isinstance(load, (tuple, list, dict)):
             if name.endswith('.tar.gz') or name.endswith('.tar') or name.endswith('.zip'):
@@ -146,6 +176,8 @@ def create_tree(path, tree, archives_leading_dir=True):
                 if PY2 and isinstance(load, text_type):
                     load = load.encode('utf-8')
                 f.write(load)
+        if executable:
+            os.chmod(full_name, os.stat(full_name).st_mode | stat.S_IEXEC)
 
 #
 # Addition "checkers"
@@ -1084,7 +1116,13 @@ def assert_dict_equal(d1, d2):
     for k in set(d1).intersection(d2):
         same = True
         try:
-            same = type(d1[k]) == type(d2[k]) and bool(d1[k] == d2[k])
+            if isinstance(d1[k], string_types):
+                # do not compare types for string types to avoid all the hassle
+                # with the distinction of str and unicode in PY3, and simple
+                # test for equality
+                same = bool(d1[k] == d2[k])
+            else:
+                same = type(d1[k]) == type(d2[k]) and bool(d1[k] == d2[k])
         except:  # if comparison or conversion to bool (e.g. with numpy arrays) fails
             same = False
 
@@ -1193,7 +1231,7 @@ def ignore_nose_capturing_stdout(func):
             # Use args instead of .message which is PY2 specific
             message = e.args[0] if e.args else ""
             if message.find('StringIO') > -1 and message.find('fileno') > -1:
-                pass
+                raise SkipTest("Triggered nose defect in masking out real stdout")
             else:
                 raise
     return newfunc
