@@ -25,8 +25,6 @@ install:
   - appveyor DownloadFile https://downloads.kitenet.net/git-annex/windows/current/git-annex-installer.exe -FileName resources\git-annex-installer.exe
   # extract git annex into the system Git installation path
   - 7z x -o"C:\\Program Files\Git" resources\git-annex-installer.exe
-  # give annex info to see that installation worked
-  - git annex version
   # info on how python is ticking
   - python -c "import sys; print(sys.path)"
   - pip install -e ".[full]"
