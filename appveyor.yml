@@ -29,7 +29,11 @@ install:
   - git annex version
   # info on how python is ticking
   - python -c "import sys; print(sys.path)"
-  - pip install -e "."
+  - pip install -e ".[full]"
+  # fixup
+  # ATM datalad does not pull in colorama, which is needed for color output
+  # on windows
+  - pip install colorama
 
 test_script:
   # establish baseline, if annex doesn't work, we are not even trying
@@ -37,6 +41,9 @@ test_script:
   # run tests on installed module, not source tree files
   - mkdir -p __testhome__
   - cd __testhome__
+  # report basic info
+  - git version
+  - git annex version
   # first sign of life
   - datalad wtf
   # and now this...
