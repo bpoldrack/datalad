@@ -9,6 +9,8 @@ environment:
 
 init:
   - "ECHO %PYTHON% %PYTHON_VERSION% %PYTHON_ARCH% %MINICONDA%"
+  # this will display login RDP info for the build VM
+  - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
 install:
   - "set PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"
@@ -27,3 +29,7 @@ test_script:
 
 #after_test:
 #  - bash <(curl -s https://codecov.io/bash)
+
+on_finish:
+  # enable the next to let the build VM block for up to 60min to log in via RDP and debug
+  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
