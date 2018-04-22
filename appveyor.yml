@@ -33,8 +33,14 @@ install:
 
 test_script:
   # establish baseline, if annex doesn't work, we are not even trying
-  - git annex test
-  #- py.test --pyargs datalad
+  #- git annex test
+  # run tests on installed module, not source tree files
+  - mkdir -p __testhome__
+  - cd __testhome__
+  # first sign of life
+  - datalad wtf
+  # and now this...
+  - python -m nose -s -v datalad
 
 #after_test:
 #  - bash <(curl -s https://codecov.io/bash)
