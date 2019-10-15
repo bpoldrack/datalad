@@ -63,9 +63,9 @@ bet we will fix some bugs and make a world even a better place.
   hyphen's were incorrectly rendered in the HTML output en-dash's.
   ([#3692][])
 
-- [create][] treated paths as relative to the dataset even when the
-  string form was given, violating the new path handling rules.
-  ([#3749][])
+- [create][], [install][], and [clone][] treated paths as relative to
+  the dataset even when the string form was given, violating the new
+  path handling rules.  ([#3749][]) ([#3777][]) ([#3780][])
 
 - Providing the "^" shortcut to `--dataset` didn't work properly when
   called from a subdirectory of a subdataset.  ([#3772][])
@@ -76,6 +76,17 @@ bet we will fix some bugs and make a world even a better place.
 - With the Python API, callers are allowed to pass a string or list of
   strings as the `cfg_proc` argument to [create][], but the string
   form was mishandled.  ([#3761][])
+
+- Incorrect command quoting for SSH calls on Windows that rendered
+  basic SSH-related functionality (e.g., [sshrun][]) on Windows
+  unusable.  ([#3688][])
+
+- Annex JSON result handling assumed platform-specific paths on Windows
+  instead of the POSIX-style that is happening across all platforms.
+  ([#3719][])
+
+- `path_is_under()` was incapable of comparing Windows paths with different
+  drive letters.  ([#3728][])
 
 ### Enhancements and new features
 
@@ -92,6 +103,12 @@ bet we will fix some bugs and make a world even a better place.
     which `contains` arguments matched a given subdataset.
   - yields an 'impossible' result record when a `contains` argument
     wasn't matched to any of the reported subdatasets.
+
+- [install][] now shows more readable output when cloning fails.
+  ([#3775][])
+
+- `SSHConnection` now displays a more informative error message when
+  it cannot start the `ControlMaster` process.  ([#3776][])
 
 - If the new configuration option `datalad.log.result-level` is set to
   a single level, all result records will be logged at that level.  If
@@ -401,7 +418,7 @@ with more performant implementations.
   information and save changes.
 
 
-## 0.11.8 (??? ??, 2019) -- will be better than ever
+## 0.11.9 (??? ??, 2019) -- will be better than ever
 
 bet we will fix some bugs and make a world even a better place.
 
@@ -411,8 +428,21 @@ bet we will fix some bugs and make a world even a better place.
 
 ### Fixes
 
+?
+
+### Enhancements and new features
+
+?
+
+
+## 0.11.8 (Oct 11, 2019) -- annex-we-are-catching-up
+
+### Fixes
+
 - Our internal command runner failed to capture output in some cases.
   ([#3656][])
+- Workaround in the tests around python in cPython >= 3.7.5 ';' in
+  the filename confusing mimetypes ([#3769][]) ([#3770][])
 
 ### Enhancements and new features
 
@@ -1939,6 +1969,7 @@ publishing
 [#3678]: https://github.com/datalad/datalad/issues/3678
 [#3680]: https://github.com/datalad/datalad/issues/3680
 [#3682]: https://github.com/datalad/datalad/issues/3682
+[#3688]: https://github.com/datalad/datalad/issues/3688
 [#3692]: https://github.com/datalad/datalad/issues/3692
 [#3693]: https://github.com/datalad/datalad/issues/3693
 [#3695]: https://github.com/datalad/datalad/issues/3695
@@ -1949,6 +1980,8 @@ publishing
 [#3705]: https://github.com/datalad/datalad/issues/3705
 [#3712]: https://github.com/datalad/datalad/issues/3712
 [#3715]: https://github.com/datalad/datalad/issues/3715
+[#3719]: https://github.com/datalad/datalad/issues/3719
+[#3728]: https://github.com/datalad/datalad/issues/3728
 [#3743]: https://github.com/datalad/datalad/issues/3743
 [#3746]: https://github.com/datalad/datalad/issues/3746
 [#3747]: https://github.com/datalad/datalad/issues/3747
@@ -1958,4 +1991,10 @@ publishing
 [#3761]: https://github.com/datalad/datalad/issues/3761
 [#3765]: https://github.com/datalad/datalad/issues/3765
 [#3768]: https://github.com/datalad/datalad/issues/3768
+[#3769]: https://github.com/datalad/datalad/issues/3769
+[#3770]: https://github.com/datalad/datalad/issues/3770
 [#3772]: https://github.com/datalad/datalad/issues/3772
+[#3775]: https://github.com/datalad/datalad/issues/3775
+[#3776]: https://github.com/datalad/datalad/issues/3776
+[#3777]: https://github.com/datalad/datalad/issues/3777
+[#3780]: https://github.com/datalad/datalad/issues/3780

@@ -71,38 +71,11 @@ from datalad.utils import _path_
 from datalad.utils import rmtree
 
 from ..dataset import Dataset
-from ..utils import _get_installationpath_from_url
 from ..utils import _get_git_url_from_source
 
 ###############
 # Test helpers:
 ###############
-
-
-def test_installationpath_from_url():
-    for p in ('lastbit',
-              'lastbit/',
-              '/lastbit',
-              'lastbit.git',
-              'lastbit.git/',
-              'http://example.com/lastbit',
-              'http://example.com/lastbit.git',
-              'http://lastbit:8000'
-              ):
-        eq_(_get_installationpath_from_url(p), 'lastbit')
-    # we need to deal with quoted urls
-    for url in (
-        # although some docs say that space could've been replaced with +
-        'http://localhost:8000/+last%20bit',
-        'http://localhost:8000/%2Blast%20bit',
-        '///%2Blast%20bit',
-        '///d1/%2Blast%20bit',
-        '///d1/+last bit',
-    ):
-        eq_(_get_installationpath_from_url(url), '+last bit')
-    # and the hostname alone
-    eq_(_get_installationpath_from_url("http://hostname"), 'hostname')
-    eq_(_get_installationpath_from_url("http://hostname/"), 'hostname')
 
 
 def test_get_git_url_from_source():
@@ -735,17 +708,11 @@ def test_install_skip_failed_recursive(src, path):
         assert_result_count(
             result, 0, path=ds.path, type='dataset')
         # subm 1 should fail to install. [1] since comes after '2' submodule
-        assert_in_results(result, status='error', path=sub1.path)
+        assert_in_results(
+            result, status='error', path=sub1.path, type='dataset',
+            message='target path already exists and not empty, refuse to '
+                    'clone into target path')
         assert_in_results(result, status='ok', path=sub2.path)
-
-        cml.assert_logged(
-            msg="target path already exists and not empty".format(sub1.path),
-            regex=False, level='ERROR')
-    # this is not in effect that this message is not propagated up
-    # assert_in(
-    #     "destination path '{}' already exists and is not an empty directory".format(
-    #         sub1.path),
-    #     result[0]['message'][2])
 
 
 @with_tree(tree={'top_file.txt': 'some',
