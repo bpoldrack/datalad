@@ -61,6 +61,18 @@ def get_connection_hash(hostname, port='', username='', identity_file='',
     # References:
     #  https://github.com/ansible/ansible/issues/11536#issuecomment-153030743
     #  https://github.com/datalad/datalad/pull/1377
+
+
+    lgr.error("Hashing connection:\n"
+              "lhost:{lhost}, rhost: {rhost}, port: {port}, identity: {identity_file}, user: {username}, bundled: {bundled}, force_ip: {force_ip}".format(
+        lhost=gethostname(),
+        rhost=hostname,
+        port=port,
+        identity_file=identity_file,
+        username=username,
+        bundled=bundled,
+        force_ip=force_ip or ''))
+
     return md5(
         '{lhost}{rhost}{port}{identity_file}{username}{bundled}{force_ip}'.format(
             lhost=gethostname(),

@@ -1680,12 +1680,17 @@ class AnnexRepo(GitRepo, RepoInterface):
             name, the special remote was created with
         """
 
+        lgr.error("XXXXXXXXXXXX\nsockets:%s", [str(p) for p in ssh_manager.socket_dir.iterdir()])
+        lgr.error("XXXXXXXXXXXX\nreg.con:%s", [str(p) for p in ssh_manager._connections])
+        lgr.error("XXXXXXXXXXXX\npre.con:%s", [str(p) for p in ssh_manager._prev_connections])
+        lgr.error("XXXXXXXXXXXX\nannex  :%s", self._annex_common_options)
+
         try:
             self._run_annex_command(
                 'enableremote',
                 annex_options=[name],
                 expect_fail=True,
-                log_stderr=True,
+                log_stderr=False,
                 env=env)
         except CommandError as e:
             if re.match(r'.*StatusCodeException.*statusCode = 401', e.stderr):

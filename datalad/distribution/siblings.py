@@ -412,6 +412,8 @@ def _configure_remote(
             # not new, override URl if given
             ds.repo.set_remote_url(name, url)
 
+        lgr.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   1")
+
         # make sure we have a configured fetch expression at this point
         fetchvar = 'remote.{}.fetch'.format(name)
         if fetchvar not in ds.repo.config:
@@ -437,12 +439,15 @@ def _configure_remote(
                 yield result_props
                 return
 
+        lgr.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   2")
+
         # define config var name for potential publication dependencies
         depvar = 'remote.{}.datalad-publish-depends'.format(name)
         # and default pushes
         dfltvar = "remote.{}.push".format(name)
 
         if fetch:
+            lgr.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   3")
             # fetch the remote so we are up to date
             for r in Update.__call__(
                     dataset=res_kwargs['refds'],
@@ -456,8 +461,11 @@ def _configure_remote(
                 # fixup refds
                 r.update(res_kwargs)
                 yield r
+            lgr.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   4")
 
+        lgr.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   5")
         delayed_super = _DelayedSuper(ds.repo)
+        lgr.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   6")
         if inherit and delayed_super.super is not None:
             # Adjust variables which we should inherit
             publish_depends = _inherit_config_var(
@@ -488,6 +496,7 @@ def _configure_remote(
                         delayed_super, name, 'groupwanted'
                     )
 
+        lgr.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   7")
         if publish_depends:
             if depvar in ds.config:
                 # config vars are incremental, so make sure we start from
@@ -500,6 +509,8 @@ def _configure_remote(
                 ds.config.add(depvar, d, where='local', reload=False)
             ds.config.reload()
 
+        lgr.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   8")
+
         if publish_by_default:
             if dfltvar in ds.config:
                 ds.config.unset(dfltvar, where='local', reload=False)
@@ -510,18 +521,27 @@ def _configure_remote(
                 ds.config.add(dfltvar, refspec, 'local')
             ds.config.reload()
 
+        lgr.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   9")
+
         assert isinstance(ds.repo, GitRepo)  # just against silly code
         if isinstance(ds.repo, AnnexRepo):
             # we need to check if added sibling an annex, and try to enable it
             # another part of the fix for #463 and #432
             try:
+                lgr.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   10")
                 exc = None
                 if not ds.config.obtain(
                         'remote.{}.annex-ignore'.format(name),
                         default=False,
                         valtype=EnsureBool(),
                         store=False):
+                    lgr.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   11")
+                    lgr.error("XXX: enable_remote (%s)", name)
+                    lgr.error("XXX: url: %s", ds.config.get("remote.{}.url".format(name)))
+                    lgr.error("XXX: pushurl: %s", ds.config.get("remote.{}.pushurl".format(name)))
+
                     ds.repo.enable_remote(name)
+                    lgr.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   12")
             except (CommandError, DownloadError) as exc:
                 # TODO yield
                 # this is unlikely to ever happen, now done for AnnexRepo
@@ -535,6 +555,7 @@ def _configure_remote(
                     "or not accessible", name)
                 lgr.debug("Exception was: %s" % exc_str(exc))
 
+            lgr.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   13")
             if as_common_datasrc:
                 ri = RI(url)
                 if isinstance(ri, URL) and ri.scheme in ('http', 'https'):
@@ -545,6 +566,8 @@ def _configure_remote(
                     # XXX except it is not enough
 
                     # make special remote of type=git (see #335)
+                    lgr.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   14")
+
                     ds.repo._run_annex_command(
                         'initremote',
                         annex_options=[
@@ -559,6 +582,9 @@ def _configure_remote(
                         message='cannot configure as a common data source, '
                                 'URL protocol is not http or https',
                         **result_props)
+
+    lgr.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX 15")
+
     #
     # place configure steps that also work for 'here' below
     #
@@ -571,6 +597,8 @@ def _configure_remote(
         if annex_groupwanted:
             ds.repo.set_groupwanted(annex_group, annex_groupwanted)
 
+    lgr.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   16")
+
     if description:
         if not isinstance(ds.repo, AnnexRepo):
             result_props['status'] = 'impossible'
@@ -578,6 +606,8 @@ def _configure_remote(
             yield result_props
             return
         ds.repo._run_annex_command('describe', annex_options=[name, description])
+
+    lgr.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   17")
 
     # report all we know at once
     info = list(_query_remotes(ds, name, known_remotes, get_annex_info=get_annex_info))[0]
