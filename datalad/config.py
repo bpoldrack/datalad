@@ -749,20 +749,32 @@ def rewrite_url(cfg, url):
         for k, v in cfg.items()
         if k.startswith('url.') and k.endswith('.insteadof')
     }
-    prev_url = None
-    while url != prev_url:
-        prev_url = url
-        # all config that applies
-        matches = {k: len(v) for k, v in insteadof.items()
-                   if url.startswith(v)}
-        # find longest match, like Git does
-        if matches:
-            rewrite_base, match_len = sorted(
-                matches.items(),
-                key=lambda x: x[1],
-                reverse=True,
-            )[0]
-            url = '{}{}'.format(rewrite_base, url[match_len:])
+
+    # all config that applies
+    matches = {
+        key: v
+        for key, val in insteadof.items()
+        for v in (val if isinstance(val, tuple) else (val,))
+        if url.startswith(v)
+    }
+    # find longest match, like Git does
+    if matches:
+        rewrite_base, match = sorted(
+            matches.items(),
+            key=lambda x: len(x[1]),
+            reverse=True,
+        )[0]
+        if sum(match == v for v in matches.values()) > 1:
+            lgr.warning(
+                "Ignoring URL rewrite configuration for '%s', "
+                "multiple conflicting definitions exists: %s",
+                match,
+                ['url.{}.insteadof'.format(k)
+                 for k, v in matches.items()
+                 if v == match]
+            )
+        else:
+            url = '{}{}'.format(rewrite_base, url[len(match):])
     return url
 
 
