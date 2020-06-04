@@ -382,6 +382,7 @@ class RunProcedure(Interface):
             # get the first match an run with it
             procedure_file, cmd_name, cmd_tmpl, cmd_help = \
                 next(_get_procedure_implementation(name, ds=ds))
+            lgr.debug("Found procedure %s at %s. Template: %s", cmd_name, procedure_file, cmd_tmpl)
         except StopIteration:
             res = get_status_dict(
                     action='run_procedure',
@@ -399,6 +400,7 @@ class RunProcedure(Interface):
         # configured template (call-format string) takes precedence:
         if cmd_tmpl:
             ex['template'] = cmd_tmpl
+        lgr.debug("Execution dict: %s", ex)
 
         if help_proc:
             if cmd_help:
