@@ -13,6 +13,7 @@ from datalad.utils import Path
 from datalad.tests.utils import (
     assert_equal,
     assert_false,
+    assert_in,
     assert_is,
     assert_is_instance,
     assert_is_not,
@@ -83,9 +84,12 @@ def test_datalad_dataset(cache_dir):
     # the test testing that very cache.
     cache_dir = Path(cache_dir)
 
+    ds_url = "https://github.com/datalad/testrepo--minimalds"
+    annexed_file = Path("inannex") / "animated.gif"
+
     with patch("datalad.tests.fixtures.DATALAD_TESTS_CACHE", new=cache_dir):
 
-        @datalad_dataset(url="https://github.com/datalad/testrepo--minimalds")
+        @datalad_dataset(url=ds_url)
         def decorated_test1(ds):
             # we get a Dataset instance
             assert_is_instance(ds, Dataset)
@@ -94,9 +98,15 @@ def test_datalad_dataset(cache_dir):
             assert_result_count(ds.siblings(), 1, type="sibling",
                                 name="origin",
                                 url=str(cache_dir / "testrepo--minimalds"))
+            here = ds.config.get("annex.uuid")
+            origin = ds.config.get("remote.origin.annex-uuid")
+            where = ds.repo.whereis(str(annexed_file))
+            assert_not_in(here, where)
+            assert_not_in(origin, where)
+
             return ds.pathobj, ds.repo.pathobj
 
-        @datalad_dataset(url="https://github.com/datalad/testrepo--minimalds")
+        @datalad_dataset(url=ds_url, paths=str(annexed_file))
         def decorated_test2(ds):
             # we get a Dataset instance
             assert_is_instance(ds, Dataset)
@@ -105,11 +115,15 @@ def test_datalad_dataset(cache_dir):
             assert_result_count(ds.siblings(), 1, type="sibling",
                                 name="origin",
                                 url=str(cache_dir / "testrepo--minimalds"))
+            here = ds.config.get("annex.uuid")
+            origin = ds.config.get("remote.origin.annex-uuid")
+            where = ds.repo.whereis(str(annexed_file))
+            assert_in(here, where)
+            assert_in(origin, where)
 
             return ds.pathobj, ds.repo.pathobj
 
-        @datalad_dataset(url="https://github.com/datalad/testrepo--minimalds",
-                         name="different")
+        @datalad_dataset(url=ds_url)
         def decorated_test3(ds):
             # we get a Dataset instance
             assert_is_instance(ds, Dataset)
@@ -117,13 +131,40 @@ def test_datalad_dataset(cache_dir):
             assert_not_in(cache_dir, ds.pathobj.parents)
             assert_result_count(ds.siblings(), 1, type="sibling",
                                 name="origin",
+                                url=str(cache_dir / "testrepo--minimalds"))
+            # origin is the same cached dataset, that got this content in
+            # decorated_test2 before. Should still be there. But "here" we
+            # didn't request it
+            here = ds.config.get("annex.uuid")
+            origin = ds.config.get("remote.origin.annex-uuid")
+            where = ds.repo.whereis(str(annexed_file))
+            assert_not_in(here, where)
+            assert_in(origin, where)
+
+            return ds.pathobj, ds.repo.pathobj
+
+        @datalad_dataset(url=ds_url,
+                         name="different")
+        def decorated_test4(ds):
+            # we get a Dataset instance
+            assert_is_instance(ds, Dataset)
+            # it's a clone in a temp. location, not within the cache
+            assert_not_in(cache_dir, ds.pathobj.parents)
+            assert_result_count(ds.siblings(), 1, type="sibling",
+                                name="origin",
                                 url=str(cache_dir / "different"))
+            here = ds.config.get("annex.uuid")
+            origin = ds.config.get("remote.origin.annex-uuid")
+            where = ds.repo.whereis(str(annexed_file))
+            assert_not_in(here, where)
+            assert_not_in(origin, where)
 
             return ds.pathobj, ds.repo.pathobj
 
         first_dspath, first_repopath = decorated_test1()
         second_dspath, second_repopath = decorated_test2()
         decorated_test3()
+        decorated_test4()
 
         # first and second are not the same, only their origin is:
         assert_not_equal(first_dspath, second_dspath)

@@ -8,6 +8,7 @@ from datalad.distribution.dataset import Dataset
 from datalad.interface.common_cfg import dirs
 from datalad.utils import (
     better_wraps,
+    ensure_list,
     optional_args,
     Path
 )
@@ -17,7 +18,7 @@ from datalad.tests.utils import with_tempfile
 DATALAD_TESTS_CACHE = Path(dirs.user_cache_dir) / "tests"
 
 
-def get_cached_dataset(url, dataset_name=None, version=None):
+def get_cached_dataset(url, dataset_name=None, version=None, paths=None):
     """ Helper to get a cached clone from url
 
     Intended for use from within `datalad_dataset` decorator.
@@ -26,7 +27,7 @@ def get_cached_dataset(url, dataset_name=None, version=None):
     to cache the original source in order to reduce time and traffic for tests,
     by letting subsequent requests clone from a local location directly.
 
-    If it's an annex get the content, too.
+    If it's an annex get the content as provided by `paths`, too.
 
     Note
     ----
@@ -41,13 +42,16 @@ def get_cached_dataset(url, dataset_name=None, version=None):
         URL to clone from
     dataset_name: str
         (directory) name to use for the clone
+    paths: str or list
+        (list of) paths to get content for. Passed to datalad-get
 
     Returns
     -------
     Dataset
     """
 
-    # TODO: What about recursive?
+    # TODO: What about recursive? Might be complicated. We would need to make
+    #       sure we can recursively clone _from_ here then.
 
     # TODO: a (env var) switch to use tmp location rather than user's cache?
     #       would be: persistent across tests vs persistent across test runs.
@@ -59,12 +63,13 @@ def get_cached_dataset(url, dataset_name=None, version=None):
     if not ds.is_installed():
         ds = Clone()(url, ds.pathobj)
     # TODO: check version
-    ds.get()
+    if paths:
+        ds.get(ensure_list(paths))
     return ds
 
 
 @optional_args
-def datalad_dataset(f, url=None, version=None, name=None):
+def datalad_dataset(f, url=None, name=None, version=None, paths=None):
 
     # TODO: env var to enable/disable caching? Or melt with location switch
     #       in get_cached_dataset?
@@ -72,10 +77,15 @@ def datalad_dataset(f, url=None, version=None, name=None):
     @better_wraps(f)
     @with_tempfile
     def newfunc(*arg, **kw):
-        ds = get_cached_dataset(url, name, version=version)
+        ds = get_cached_dataset(url, dataset_name=name,
+                                version=version, paths=paths)
         clone_ds = Clone()(ds.pathobj, arg[-1])
-        print("\n\n Cloned from cache to: %s" % arg[-1])
-        print("\n\n Deliver dataset: %s" % clone_ds)
+        # TODO: with version implemented, we would actually need to not pass
+        #       `paths` into get_cached_dataset, but figure the keys based on
+        #       version checkout in the clone und get those keys in `ds`. Only
+        #       then get paths in `clone_ds` from `ds`.
+        if paths:
+            clone_ds.get(ensure_list(paths))
         return f(*(arg[:-1] + (clone_ds,)), **kw)
 
     return newfunc
