@@ -1,5 +1,6 @@
 """utilities to assist with setting up tests"""
 
+from datalad import cfg
 from datalad.core.distributed.clone import (
     Clone,
     decode_source_spec
@@ -15,7 +16,7 @@ from datalad.utils import (
 from datalad.tests.utils import with_tempfile
 
 
-DATALAD_TESTS_CACHE = Path(dirs.user_cache_dir) / "tests"
+DATALAD_TESTS_CACHE = cfg.obtain("datalad.tests.cache")
 
 
 def get_cached_dataset(url, dataset_name=None, version=None, paths=None):
@@ -53,8 +54,8 @@ def get_cached_dataset(url, dataset_name=None, version=None, paths=None):
     # TODO: What about recursive? Might be complicated. We would need to make
     #       sure we can recursively clone _from_ here then.
 
-    # TODO: a (env var) switch to use tmp location rather than user's cache?
-    #       would be: persistent across tests vs persistent across test runs.
+    if not DATALAD_TESTS_CACHE:
+        raise ValueError("Caching disabled by config")
 
     if not dataset_name:
         dataset_name = decode_source_spec(url)['default_destpath']
@@ -71,15 +72,15 @@ def get_cached_dataset(url, dataset_name=None, version=None, paths=None):
 @optional_args
 def datalad_dataset(f, url=None, name=None, version=None, paths=None):
 
-    # TODO: env var to enable/disable caching? Or melt with location switch
-    #       in get_cached_dataset?
-
     @better_wraps(f)
     @with_tempfile
     def newfunc(*arg, **kw):
-        ds = get_cached_dataset(url, dataset_name=name,
-                                version=version, paths=paths)
-        clone_ds = Clone()(ds.pathobj, arg[-1])
+        if DATALAD_TESTS_CACHE:
+            ds = get_cached_dataset(url, dataset_name=name,
+                                    version=version, paths=paths)
+            clone_ds = Clone()(ds.pathobj, arg[-1])
+        else:
+            clone_ds = Clone()(url, arg[-1])
         # TODO: with version implemented, we would actually need to not pass
         #       `paths` into get_cached_dataset, but figure the keys based on
         #       version checkout in the clone und get those keys in `ds`. Only
