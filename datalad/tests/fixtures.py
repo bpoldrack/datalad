@@ -28,21 +28,22 @@ def get_cached_dataset(url, dataset_name=None, version=None, paths=None):
 
     If it's an annex get the content as provided by `paths`, too.
 
-    Note
-    ----
-    `version` not yet implemented. Intention: verify that `version` can be
-    checked out, but don't actually do it, since the cached dataset is intended
-    to be used as origin instead of the original remote at URL by the
-    `datalad_dataset` test decorator. Checkout of a particular should happen
+    Verifies that `version` can be checked out, but doesn't actually do it,
+    since the cached dataset is intended to be used as origin instead of the
+    original remote at URL by the `cached_dataset` test decorator. Checkout of
+    a particular version should happen in its clone.
 
     Parameters
     ----------
     url: str
         URL to clone from
-    dataset_name: str
-        (directory) name to use for the clone
-    paths: str or list
-        (list of) paths to get content for. Passed to datalad-get
+    dataset_name: str or None
+        (directory) name to use for the clone. If None, a name will be derived
+        from `url`.
+    paths: str or list or None
+        (list of) paths to get content for. Passed to datalad-get.
+    version: str or None
+        A commit or an object that can be dereferenced to one.
 
     Returns
     -------
@@ -61,15 +62,45 @@ def get_cached_dataset(url, dataset_name=None, version=None, paths=None):
     ds = Dataset(DATALAD_TESTS_CACHE / dataset_name)
     if not ds.is_installed():
         ds = Clone()(url, ds.pathobj)
-    # TODO: check version
+    if version:
+        # check whether version is available
+        assert ds.repo.commit_exists(version)
+    # TODO: What about an outdated dataset in cache? How do we properly update
+    #       from original URL in all cases? Given that it's meant to be used in
+    #       tests, it seems okay-ish to just manually remove from cache if tests
+    #       appear to not work right (or a version is missing). Datasets used in
+    #       tests shouldn't change all the time.
+    #       Auto-fetching, -pulling etc. seems difficult to cover all cases,
+    #       particularly if `version` specifies local branches.
     if paths:
+        # TODO: Double-check we can actually get keys rather than paths.
         ds.get(ensure_list(paths))
+
     return ds
 
 
 @optional_args
 def cached_dataset(f, url=None, name=None, version=None, paths=None):
+    """Test decorator providing a clone of `url` from cache
 
+    If config datalad.tests.cache is not set, delivers a clone in a temporary
+    location of the original `url`. Otherwise that clone is in fact a clone of a
+    cached dataset (origin being the cache instead of `url`).
+    This allows to reduce time and network traffic when using a dataset in
+    different tests.
+
+    Parameters
+    ----------
+    f
+    url
+    name
+    version
+    paths
+
+    Returns
+    -------
+
+    """
     @better_wraps(f)
     @with_tempfile
     def newfunc(*arg, **kw):
@@ -79,6 +110,8 @@ def cached_dataset(f, url=None, name=None, version=None, paths=None):
             clone_ds = Clone()(ds.pathobj, arg[-1])
         else:
             clone_ds = Clone()(url, arg[-1])
+        if version:
+            clone_ds.repo.checkout(version)
         # TODO: with version implemented, we would actually need to not pass
         #       `paths` into get_cached_dataset, but figure the keys based on
         #       version checkout in the clone und get those keys in `ds`. Only
@@ -92,7 +125,22 @@ def cached_dataset(f, url=None, name=None, version=None, paths=None):
 
 @optional_args
 def cached_url(f, url=None, name=None, paths=None):
+    """Test decorator providing a URL to clone from, pointing to cached dataset
 
+    If config datalad.tests.cache is not set, delivers the original `url`,
+    otherwise a file-scheme url to the cached clone thereof.
+
+    Parameters
+    ----------
+    f
+    url
+    name
+    paths
+
+    Returns
+    -------
+
+    """
     @better_wraps(f)
     def newfunc(*arg, **kw):
         if DATALAD_TESTS_CACHE:
