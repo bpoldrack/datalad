@@ -18,6 +18,7 @@ from datalad.tests.utils import (
     assert_is_instance,
     assert_not_in,
     assert_not_equal,
+    assert_raises,
     assert_result_count,
     assert_true,
     with_tempfile
@@ -56,7 +57,12 @@ def test_get_cached_dataset(cache_dir):
             with patch("datalad.tests.fixtures.Clone.__call__") as exec_clone:
                 ds = get_cached_dataset(url, name, version)
             # clone was called
-            exec_clone.assert_called()
+            # Note: assert_called was only introduced in 3.6, while
+            # assert_not_called exists in 3.5 already. As we test for python
+            # 3.5, we need to solve it differently. At the same time the test
+            # isn't about the precise call as required by assert_called_with.
+            # -> just negate assert_not_called
+            assert_raises(AssertionError, exec_clone.assert_not_called)
 
             # patch prevents actual execution. Now do it for real:
             ds = get_cached_dataset(url, name, version)
