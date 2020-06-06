@@ -6,12 +6,10 @@ from datalad.core.distributed.clone import (
     decode_source_spec
 )
 from datalad.distribution.dataset import Dataset
-from datalad.interface.common_cfg import dirs
 from datalad.utils import (
     better_wraps,
     ensure_list,
     optional_args,
-    Path
 )
 from datalad.tests.utils import with_tempfile
 
@@ -22,7 +20,7 @@ DATALAD_TESTS_CACHE = cfg.obtain("datalad.tests.cache")
 def get_cached_dataset(url, dataset_name=None, version=None, paths=None):
     """ Helper to get a cached clone from url
 
-    Intended for use from within `datalad_dataset` decorator.
+    Intended for use from within `cached_dataset` and `cached_url` decorators.
     Clones `url` into user's cache under datalad/tests/`name`. If such a clone
     already exists, don't clone but return the existing one. So, it's supposed
     to cache the original source in order to reduce time and traffic for tests,
@@ -70,7 +68,7 @@ def get_cached_dataset(url, dataset_name=None, version=None, paths=None):
 
 
 @optional_args
-def datalad_dataset(f, url=None, name=None, version=None, paths=None):
+def cached_dataset(f, url=None, name=None, version=None, paths=None):
 
     @better_wraps(f)
     @with_tempfile
@@ -88,5 +86,22 @@ def datalad_dataset(f, url=None, name=None, version=None, paths=None):
         if paths:
             clone_ds.get(ensure_list(paths))
         return f(*(arg[:-1] + (clone_ds,)), **kw)
+
+    return newfunc
+
+
+@optional_args
+def cached_url(f, url=None, name=None, paths=None):
+
+    @better_wraps(f)
+    def newfunc(*arg, **kw):
+        if DATALAD_TESTS_CACHE:
+            ds = get_cached_dataset(url, dataset_name=name,
+                                    version=None, paths=paths)
+            new_url = ds.pathobj.as_uri()
+        else:
+            new_url = url
+
+        return f(*(arg + (new_url,)), **kw)
 
     return newfunc

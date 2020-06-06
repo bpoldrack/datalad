@@ -1,13 +1,13 @@
 """Testing test fixtures"""
 
-import appdirs
 from datalad.core.distributed.clone import decode_source_spec as dec_url
 from datalad.distribution.dataset import Dataset
 from datalad.support.annexrepo import AnnexRepo
 from datalad.support.gitrepo import GitRepo
 from datalad.tests.fixtures import (
     get_cached_dataset,
-    datalad_dataset
+    cached_dataset,
+    cached_url
 )
 from datalad.utils import Path
 from datalad.tests.utils import (
@@ -16,7 +16,6 @@ from datalad.tests.utils import (
     assert_in,
     assert_is,
     assert_is_instance,
-    assert_is_not,
     assert_not_in,
     assert_not_equal,
     assert_result_count,
@@ -78,7 +77,7 @@ def test_get_cached_dataset(cache_dir):
 
 
 @with_tempfile(mkdir=True)
-def test_datalad_dataset(cache_dir):
+def test_cached_dataset(cache_dir):
 
     # patch DATALAD_TESTS_CACHE to not use the actual cache with
     # the test testing that very cache.
@@ -89,7 +88,7 @@ def test_datalad_dataset(cache_dir):
 
     with patch("datalad.tests.fixtures.DATALAD_TESTS_CACHE", new=cache_dir):
 
-        @datalad_dataset(url=ds_url)
+        @cached_dataset(url=ds_url)
         def decorated_test1(ds):
             # we get a Dataset instance
             assert_is_instance(ds, Dataset)
@@ -106,7 +105,7 @@ def test_datalad_dataset(cache_dir):
 
             return ds.pathobj, ds.repo.pathobj
 
-        @datalad_dataset(url=ds_url, paths=str(annexed_file))
+        @cached_dataset(url=ds_url, paths=str(annexed_file))
         def decorated_test2(ds):
             # we get a Dataset instance
             assert_is_instance(ds, Dataset)
@@ -123,7 +122,7 @@ def test_datalad_dataset(cache_dir):
 
             return ds.pathobj, ds.repo.pathobj
 
-        @datalad_dataset(url=ds_url)
+        @cached_dataset(url=ds_url)
         def decorated_test3(ds):
             # we get a Dataset instance
             assert_is_instance(ds, Dataset)
@@ -143,8 +142,7 @@ def test_datalad_dataset(cache_dir):
 
             return ds.pathobj, ds.repo.pathobj
 
-        @datalad_dataset(url=ds_url,
-                         name="different")
+        @cached_dataset(url=ds_url, name="different")
         def decorated_test4(ds):
             # we get a Dataset instance
             assert_is_instance(ds, Dataset)
@@ -169,3 +167,53 @@ def test_datalad_dataset(cache_dir):
         # first and second are not the same, only their origin is:
         assert_not_equal(first_dspath, second_dspath)
         assert_not_equal(first_repopath, second_repopath)
+
+
+@with_tempfile(mkdir=True)
+def test_cached_url(cache_dir):
+
+    # patch DATALAD_TESTS_CACHE to not use the actual cache with
+    # the test testing that very cache.
+    cache_dir = Path(cache_dir)
+
+    ds_url = "https://github.com/datalad/testrepo--minimalds"
+    annexed_file = Path("inannex") / "animated.gif"
+
+    with patch("datalad.tests.fixtures.DATALAD_TESTS_CACHE", new=cache_dir):
+
+        @cached_url(url=ds_url)
+        def decorated_test1(url):
+            # we expect a file-scheme url to a cached version of `ds_url`
+            expect_origin_path = cache_dir / "testrepo--minimalds"
+            assert_equal(expect_origin_path.as_uri(),
+                         url)
+            origin = Dataset(expect_origin_path)
+            assert_true(origin.is_installed())
+            assert_false(origin.repo.file_has_content(str(annexed_file)))
+
+        decorated_test1()
+
+        @cached_url(url=ds_url, name="different", paths=str(annexed_file))
+        def decorated_test2(url):
+            # we expect a file-scheme url to a "different" cached version of
+            # `ds_url`
+            expect_origin_path = cache_dir / "different"
+            assert_equal(expect_origin_path.as_uri(),
+                         url)
+            origin = Dataset(expect_origin_path)
+            assert_true(origin.is_installed())
+            assert_true(origin.repo.file_has_content(str(annexed_file)))
+
+        decorated_test2()
+
+    # disable caching. Note, that in reality DATALAD_TESTS_CACHE is determined
+    # on import time of datalad.tests.fixtures based on the config
+    # "datalad.tests.cache". We patch the result here, not the config itself.
+    with patch("datalad.tests.fixtures.DATALAD_TESTS_CACHE", new=None):
+
+        @cached_url(url=ds_url)
+        def decorated_test3(url):
+            # we expect the original url, since caching is disabled
+            assert_equal(url, ds_url)
+
+        decorated_test3()
