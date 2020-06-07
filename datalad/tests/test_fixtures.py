@@ -36,9 +36,13 @@ def test_get_cached_dataset(cache_dir):
     # the test testing that very cache.
     cache_dir = Path(cache_dir)
 
+    # store file-based values for testrepo-minimalds for readability:
+    annexed_file = opj('inannex', 'animated.gif')
+    annexed_file_key = "MD5E-s144625--4c458c62b7ac8ec8e19c8ff14b2e34ad.gif"
+
     with patch("datalad.tests.fixtures.DATALAD_TESTS_CACHE", new=cache_dir):
 
-        # tuples to test (url, name, version, paths, class):
+        # tuples to test (url, name, version, keys, class):
         test_cases = [
 
             # a simple testrepo
@@ -53,13 +57,13 @@ def test_get_cached_dataset(cache_dir):
             ("https://github.com/datalad/testrepo--minimalds",
              None,
              "9dd8b56cc706ab56185f2ceb75fbe9de9b606724",
-             opj('inannex', 'animated.gif'),
+             annexed_file_key,
              AnnexRepo),
             # Same repo again, but invalid version
             ("https://github.com/datalad/testrepo--minimalds",
              None,
              "nonexistent",
-             opj("irrelevant", "path"),  # invalid version -> path irrelevant
+             "irrelevantkey",  # invalid version; don't even try to get the key
              AnnexRepo),
             # same thing with different name should be treated as a new thing
             ("https://github.com/datalad/testrepo--minimalds",
@@ -76,7 +80,7 @@ def test_get_cached_dataset(cache_dir):
              GitRepo),
 
         ]
-        for url, name, version, paths, cls in test_cases:
+        for url, name, version, keys, cls in test_cases:
             target = cache_dir / (name if name
                                   else dec_url(url)['default_destpath'])
 
@@ -84,7 +88,7 @@ def test_get_cached_dataset(cache_dir):
             in_cache_before = target.exists()
             with patch("datalad.tests.fixtures.Clone.__call__") as exec_clone:
                 try:
-                    ds = get_cached_dataset(url, name, version, paths)
+                    ds = get_cached_dataset(url, name, version, keys)
                     invalid_version = False
                 except AssertionError:
                     # should happen only if `version` wasn't found. Implies
@@ -112,7 +116,7 @@ def test_get_cached_dataset(cache_dir):
             # this might be necessary for content retrieval even if dataset was
             # in cache before,
             try:
-                ds = get_cached_dataset(url, name, version, paths)
+                ds = get_cached_dataset(url, name, version, keys)
             except AssertionError:
                 # see previous call
                 assert_true(invalid_version)
@@ -122,15 +126,22 @@ def test_get_cached_dataset(cache_dir):
             assert_equal(target, ds.pathobj)
             assert_is_instance(ds.repo, cls)
 
-            # TODO: paths to get and `version` parameter are not aligned yet. We
-            #       actually need to deal with keys instead to be able to refer
-            #       to content not in current worktree!
-            if paths and not invalid_version:
+            if keys and not invalid_version:
                 # Note: it's not supposed to get that content if passed
                 # `version` wasn't available. get_cached_dataset would then
                 # raise before and not download anything only to raise
                 # afterwards.
-                has_content = ds.repo.file_has_content(paths)
+                # Note2 / TODO: We currently have no method to check whether a
+                # particular is locally present. Strangely enough even
+                # annex-checkpresentkey doesn't allow to specify "here" as the
+                # remote to check. Therefore being somewhat inconsistent with
+                # the `test_cases` approach here, assuming we know the path to
+                # the key. At least make that assumption explicit, so addition
+                # of a test case w/ different key will lead to failure here.
+                # However, there should be a better solution!
+                assert_equal(keys, annexed_file_key)
+
+                has_content = ds.repo.file_has_content(annexed_file)
                 assert_true(
                     all(has_content) if isinstance(has_content, list)
                     else has_content
@@ -145,7 +156,7 @@ def test_get_cached_dataset(cache_dir):
             # re-execution
             with patch("datalad.tests.fixtures.Clone.__call__") as exec_clone:
                 try:
-                    ds2 = get_cached_dataset(url, name, version, paths)
+                    ds2 = get_cached_dataset(url, name, version, keys)
                 except AssertionError:
                     assert_true(invalid_version)
             exec_clone.assert_not_called()
@@ -279,6 +290,7 @@ def test_cached_url(cache_dir):
 
     ds_url = "https://github.com/datalad/testrepo--minimalds"
     annexed_file = Path("inannex") / "animated.gif"
+    annexed_file_key = "MD5E-s144625--4c458c62b7ac8ec8e19c8ff14b2e34ad.gif"
 
     with patch("datalad.tests.fixtures.DATALAD_TESTS_CACHE", new=cache_dir):
 
@@ -294,7 +306,7 @@ def test_cached_url(cache_dir):
 
         decorated_test1()
 
-        @cached_url(url=ds_url, name="different", paths=str(annexed_file))
+        @cached_url(url=ds_url, name="different", keys=annexed_file_key)
         def decorated_test2(url):
             # we expect a file-scheme url to a "different" cached version of
             # `ds_url`
