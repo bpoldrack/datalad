@@ -10,6 +10,7 @@ from datalad.utils import (
     better_wraps,
     ensure_list,
     optional_args,
+    rmtree
 )
 from datalad.tests.utils import with_tempfile
 
@@ -51,7 +52,8 @@ def get_cached_dataset(url, dataset_name=None, version=None, paths=None):
     """
 
     # TODO: What about recursive? Might be complicated. We would need to make
-    #       sure we can recursively clone _from_ here then.
+    #       sure we can recursively clone _from_ here then, potentially
+    #       requiring submodule URL rewrites. Not sure about that ATM.
 
     if not DATALAD_TESTS_CACHE:
         raise ValueError("Caching disabled by config")
@@ -60,18 +62,32 @@ def get_cached_dataset(url, dataset_name=None, version=None, paths=None):
         dataset_name = decode_source_spec(url)['default_destpath']
 
     ds = Dataset(DATALAD_TESTS_CACHE / dataset_name)
+
     if not ds.is_installed():
         ds = Clone()(url, ds.pathobj)
+
+    # When/How to update a dataset in cache? If version is a commit SHA and we
+    # have it, there's no need for an update. Otherwise it gets tricky, because
+    # this is a cache, not a checkout a test would operate on. It needs to
+    # behave as if it was the thing at `url` from the point of view of the test
+    # using it (cloning/getting content from here). We would nee to update all
+    # references, not just fetch them!
+    #
+    # Can we even (cheaply) tell whether `version` is an absolute reference
+    # (actual SHA, not a branch/tag)?
+    #
+    # So, for now fetch, figure whether there actually was something to fetch
+    # and if so simply invalidate cache and re-clone/get. Don't overcomplicate
+    # things. It's about datasets used in the tests - they shouldn't change too
+    # frequently.
+    elif any('uptodate' not in c['operations']
+             for c in ds.repo.fetch('origin')):
+        rmtree(ds.path)
+        ds = Clone()(url, ds.pathobj)
+
     if version:
         # check whether version is available
         assert ds.repo.commit_exists(version)
-    # TODO: What about an outdated dataset in cache? How do we properly update
-    #       from original URL in all cases? Given that it's meant to be used in
-    #       tests, it seems okay-ish to just manually remove from cache if tests
-    #       appear to not work right (or a version is missing). Datasets used in
-    #       tests shouldn't change all the time.
-    #       Auto-fetching, -pulling etc. seems difficult to cover all cases,
-    #       particularly if `version` specifies local branches.
     if paths:
         # TODO: Double-check we can actually get keys rather than paths.
         ds.get(ensure_list(paths))
