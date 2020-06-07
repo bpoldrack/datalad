@@ -1,4 +1,4 @@
-"""utilities to assist with setting up tests"""
+"""Utils for cached test datasets"""
 
 from datalad import cfg
 from datalad.core.distributed.clone import (
@@ -74,7 +74,9 @@ def get_cached_dataset(url, version=None, keys=None):
     # TODO: Given that it is supposed to be a cache for the original repo at
     #       `url`, we prob. should make this a bare repository. We don't need
     #       a potentially expensive checkout here. Need to double check
-    #       `annex-get --key` in bare repos, though.
+    #       `annex-get --key` in bare repos, though. Plus datalad-clone doesn't
+    #       have --bare yet. But we want all the annex/special-remote/ria magic
+    #       of datalad. So, plain git-clone --bare is not an option.
 
     if not DATALAD_TESTS_CACHE:
         raise ValueError("Caching disabled by config")
@@ -94,6 +96,11 @@ def get_cached_dataset(url, version=None, keys=None):
     # Can we even (cheaply) tell whether `version` is an absolute reference
     # (actual SHA, not a branch/tag)?
     #
+    # NOTE: - consider git-clone --mirror, but as w/ --bare: not an option for
+    #         datalad-clone yet.
+    #       - --reference[-if-able] might also be worth thinking about for
+    #         the clone @cached_dataset creates wrt clone in cacheq
+    #
     # So, for now fetch, figure whether there actually was something to fetch
     # and if so simply invalidate cache and re-clone/get. Don't overcomplicate
     # things. It's about datasets used in the tests - they shouldn't change too
@@ -106,7 +113,7 @@ def get_cached_dataset(url, version=None, keys=None):
     if version:
         # check whether version is available
         assert ds.repo.commit_exists(version)
-    if keys:
+    if keys and AnnexRepo.is_valid_repo(ds.path):
         ds.repo.get(keys, key=True)
 
     return ds

@@ -1,9 +1,9 @@
-"""Testing test fixtures"""
+"""Testing cached test dataset utils"""
 
 from datalad.distribution.dataset import Dataset
 from datalad.support.annexrepo import AnnexRepo
 from datalad.support.gitrepo import GitRepo
-from datalad.tests.fixtures import (
+from datalad.tests.utils_cached_dataset import (
     get_cached_dataset,
     cached_dataset,
     cached_url,
@@ -29,6 +29,10 @@ from datalad.tests.utils import (
 from unittest.mock import patch
 
 
+CACHE_PATCH_STR = "datalad.tests.utils_cached_dataset.DATALAD_TESTS_CACHE"
+CLONE_PATCH_STR = "datalad.tests.utils_cached_dataset.Clone.__call__"
+
+
 @with_tempfile(mkdir=True)
 def test_get_cached_dataset(cache_dir):
 
@@ -40,7 +44,7 @@ def test_get_cached_dataset(cache_dir):
     annexed_file = opj('inannex', 'animated.gif')
     annexed_file_key = "MD5E-s144625--4c458c62b7ac8ec8e19c8ff14b2e34ad.gif"
 
-    with patch("datalad.tests.fixtures.DATALAD_TESTS_CACHE", new=cache_dir):
+    with patch(CACHE_PATCH_STR, new=cache_dir):
 
         # tuples to test (url, version, keys, class):
         test_cases = [
@@ -52,7 +56,7 @@ def test_get_cached_dataset(cache_dir):
              AnnexRepo),
             # Same repo, but request paths to be present. This should work
             # with a subsequent call, although the first one did not already
-            # request any.
+            # request any:
             ("https://github.com/datalad/testrepo--minimalds",
              "9dd8b56cc706ab56185f2ceb75fbe9de9b606724",
              annexed_file_key,
@@ -62,16 +66,22 @@ def test_get_cached_dataset(cache_dir):
              "nonexistent",
              "irrelevantkey",  # invalid version; don't even try to get the key
              AnnexRepo),
-            # same thing with different name should be treated as a new thing
+            # same thing with different name should be treated as a new thing:
             ("https://github.com/datalad/testrepo--minimalds",
              "git-annex",
              None,
              AnnexRepo),
-            # try a plain git repo to make sure we can deal with that
-            # TODO: version + paths
+            # try a plain git repo to make sure we can deal with that:
+            # Note, that we need it twice to not blow up the test when Clone
+            # is patched, resulting in a MagicMock instead of a Dataset instance
+            # within get_cached_dataset.
             ("https://github.com/datalad/datalad.org",
              None,
              None,
+             GitRepo),
+            ("https://github.com/datalad/datalad.org",
+             "gh-pages",
+             "ignored-key",  # it's a git repo; don't even try to get a key
              GitRepo),
 
         ]
@@ -80,7 +90,7 @@ def test_get_cached_dataset(cache_dir):
 
             # assuming it doesn't exist yet - patched cache dir!
             in_cache_before = target.exists()
-            with patch("datalad.tests.fixtures.Clone.__call__") as exec_clone:
+            with patch(CLONE_PATCH_STR) as exec_clone:
                 try:
                     ds = get_cached_dataset(url, version, keys)
                     invalid_version = False
@@ -148,7 +158,7 @@ def test_get_cached_dataset(cache_dir):
                 assert_true(ds.repo.commit_exists(version))
 
             # re-execution
-            with patch("datalad.tests.fixtures.Clone.__call__") as exec_clone:
+            with patch(CLONE_PATCH_STR) as exec_clone:
                 try:
                     ds2 = get_cached_dataset(url, version, keys)
                 except AssertionError:
@@ -168,7 +178,7 @@ def test_cached_dataset(cache_dir):
     name_in_cache = url2filename(ds_url)
     annexed_file = Path("inannex") / "animated.gif"
 
-    with patch("datalad.tests.fixtures.DATALAD_TESTS_CACHE", new=cache_dir):
+    with patch(CACHE_PATCH_STR, new=cache_dir):
 
         @cached_dataset(url=ds_url)
         def decorated_test1(ds):
@@ -270,7 +280,7 @@ def test_cached_url(cache_dir):
     annexed_file = Path("inannex") / "animated.gif"
     annexed_file_key = "MD5E-s144625--4c458c62b7ac8ec8e19c8ff14b2e34ad.gif"
 
-    with patch("datalad.tests.fixtures.DATALAD_TESTS_CACHE", new=cache_dir):
+    with patch(CACHE_PATCH_STR, new=cache_dir):
 
         @cached_url(url=ds_url)
         def decorated_test1(url):
@@ -300,7 +310,7 @@ def test_cached_url(cache_dir):
     # disable caching. Note, that in reality DATALAD_TESTS_CACHE is determined
     # on import time of datalad.tests.fixtures based on the config
     # "datalad.tests.cache". We patch the result here, not the config itself.
-    with patch("datalad.tests.fixtures.DATALAD_TESTS_CACHE", new=None):
+    with patch(CACHE_PATCH_STR, new=None):
 
         @cached_url(url=ds_url)
         def decorated_test3(url):
