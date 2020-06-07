@@ -24,7 +24,7 @@ def url2filename(url):
 
     # TODO: Not really important for now, but there should be a more
     #       sophisticated approach to replace. May be just everything that
-    #       isn't alphanumeric?
+    #       isn't alphanumeric? Or simply hash the URL?
     # make it a Path, too, so pathlib can raise if we are creating an invalid
     # path on some system we run the tests on.
     return Path(
