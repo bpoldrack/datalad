@@ -3,13 +3,13 @@
 from datalad import cfg
 from datalad.core.distributed.clone import (
     Clone,
-    decode_source_spec
 )
 from datalad.distribution.dataset import Dataset
 from datalad.utils import (
     better_wraps,
     ensure_list,
     optional_args,
+    Path,
     rmtree
 )
 from datalad.support.annexrepo import AnnexRepo
@@ -19,7 +19,19 @@ from datalad.tests.utils import with_tempfile
 DATALAD_TESTS_CACHE = cfg.obtain("datalad.tests.cache")
 
 
-def get_cached_dataset(url, dataset_name=None, version=None, keys=None):
+def url2filename(url):
+    """generate file/directory name from a URL"""
+
+    # TODO: Not really important for now, but there should be a more
+    #       sophisticated approach to replace. May be just everything that
+    #       isn't alphanumeric?
+    # make it a Path, too, so pathlib can raise if we are creating an invalid
+    # path on some system we run the tests on.
+    return Path(
+        url.lower().replace("/", "_").replace(":", "_").replace("?", "_"))
+
+
+def get_cached_dataset(url, version=None, keys=None):
     """ Helper to get a cached clone from url
 
     Intended for use from within `cached_dataset` and `cached_url` decorators.
@@ -45,9 +57,6 @@ def get_cached_dataset(url, dataset_name=None, version=None, keys=None):
     ----------
     url: str
         URL to clone from
-    dataset_name: str or None
-        (directory) name to use for the clone. If None, a name will be derived
-        from `url`.
     keys: str or list or None
         (list of) annex keys to get content for.
     version: str or None
@@ -70,10 +79,7 @@ def get_cached_dataset(url, dataset_name=None, version=None, keys=None):
     if not DATALAD_TESTS_CACHE:
         raise ValueError("Caching disabled by config")
 
-    if not dataset_name:
-        dataset_name = decode_source_spec(url)['default_destpath']
-
-    ds = Dataset(DATALAD_TESTS_CACHE / dataset_name)
+    ds = Dataset(DATALAD_TESTS_CACHE / url2filename(url))
 
     if not ds.is_installed():
         ds = Clone()(url, ds.pathobj)
@@ -107,7 +113,7 @@ def get_cached_dataset(url, dataset_name=None, version=None, keys=None):
 
 
 @optional_args
-def cached_dataset(f, url=None, name=None, version=None, paths=None):
+def cached_dataset(f, url=None, version=None, paths=None):
     """Test decorator providing a clone of `url` from cache
 
     If config datalad.tests.cache is not set, delivers a clone in a temporary
@@ -122,7 +128,6 @@ def cached_dataset(f, url=None, name=None, version=None, paths=None):
     ----------
     url: str
         URL to the to be cloned dataset
-    name: str
     version: str
         committish to checkout in the clone
     paths: str or list
@@ -144,7 +149,7 @@ def cached_dataset(f, url=None, name=None, version=None, paths=None):
             # Note: We can't pass keys based on `paths` parameter to
             # get_cached_dataset yet, since translation to keys depends on a
             # worktree. We'll have the worktree of `version` only after cloning.
-            ds = get_cached_dataset(url, dataset_name=name, version=version)
+            ds = get_cached_dataset(url, version=version)
             clone_ds = Clone()(ds.pathobj, arg[-1])
         else:
             clone_ds = Clone()(url, arg[-1])
@@ -170,7 +175,7 @@ def cached_dataset(f, url=None, name=None, version=None, paths=None):
 
 
 @optional_args
-def cached_url(f, url=None, name=None, keys=None):
+def cached_url(f, url=None, keys=None):
     """Test decorator providing a URL to clone from, pointing to cached dataset
 
     If config datalad.tests.cache is not set, delivers the original `url`,
@@ -192,7 +197,6 @@ def cached_url(f, url=None, name=None, keys=None):
     ----------
     url: str
         URL to the original dataset
-    name: str
     keys: str or list or None
         (list of) annex keys to get content for.
 
@@ -210,7 +214,7 @@ def cached_url(f, url=None, name=None, keys=None):
     @better_wraps(f)
     def newfunc(*arg, **kw):
         if DATALAD_TESTS_CACHE:
-            ds = get_cached_dataset(url, dataset_name=name, version=None)
+            ds = get_cached_dataset(url, version=None)
             if keys:
                 ds.repo.get(keys, key=True)
             new_url = ds.pathobj.as_uri()

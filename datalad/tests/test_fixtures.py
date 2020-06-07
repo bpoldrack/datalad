@@ -1,13 +1,13 @@
 """Testing test fixtures"""
 
-from datalad.core.distributed.clone import decode_source_spec as dec_url
 from datalad.distribution.dataset import Dataset
 from datalad.support.annexrepo import AnnexRepo
 from datalad.support.gitrepo import GitRepo
 from datalad.tests.fixtures import (
     get_cached_dataset,
     cached_dataset,
-    cached_url
+    cached_url,
+    url2filename
 )
 from datalad.utils import (
     opj,
@@ -42,12 +42,11 @@ def test_get_cached_dataset(cache_dir):
 
     with patch("datalad.tests.fixtures.DATALAD_TESTS_CACHE", new=cache_dir):
 
-        # tuples to test (url, name, version, keys, class):
+        # tuples to test (url, version, keys, class):
         test_cases = [
 
             # a simple testrepo
             ("https://github.com/datalad/testrepo--minimalds",
-             None,
              "541cf855d13c2a338ff2803d4488daf0035e568f",
              None,
              AnnexRepo),
@@ -55,19 +54,16 @@ def test_get_cached_dataset(cache_dir):
             # with a subsequent call, although the first one did not already
             # request any.
             ("https://github.com/datalad/testrepo--minimalds",
-             None,
              "9dd8b56cc706ab56185f2ceb75fbe9de9b606724",
              annexed_file_key,
              AnnexRepo),
             # Same repo again, but invalid version
             ("https://github.com/datalad/testrepo--minimalds",
-             None,
              "nonexistent",
              "irrelevantkey",  # invalid version; don't even try to get the key
              AnnexRepo),
             # same thing with different name should be treated as a new thing
             ("https://github.com/datalad/testrepo--minimalds",
-             "minimal",
              "git-annex",
              None,
              AnnexRepo),
@@ -76,19 +72,17 @@ def test_get_cached_dataset(cache_dir):
             ("https://github.com/datalad/datalad.org",
              None,
              None,
-             None,
              GitRepo),
 
         ]
-        for url, name, version, keys, cls in test_cases:
-            target = cache_dir / (name if name
-                                  else dec_url(url)['default_destpath'])
+        for url, version, keys, cls in test_cases:
+            target = cache_dir / url2filename(url)
 
             # assuming it doesn't exist yet - patched cache dir!
             in_cache_before = target.exists()
             with patch("datalad.tests.fixtures.Clone.__call__") as exec_clone:
                 try:
-                    ds = get_cached_dataset(url, name, version, keys)
+                    ds = get_cached_dataset(url, version, keys)
                     invalid_version = False
                 except AssertionError:
                     # should happen only if `version` wasn't found. Implies
@@ -116,7 +110,7 @@ def test_get_cached_dataset(cache_dir):
             # this might be necessary for content retrieval even if dataset was
             # in cache before,
             try:
-                ds = get_cached_dataset(url, name, version, keys)
+                ds = get_cached_dataset(url, version, keys)
             except AssertionError:
                 # see previous call
                 assert_true(invalid_version)
@@ -156,7 +150,7 @@ def test_get_cached_dataset(cache_dir):
             # re-execution
             with patch("datalad.tests.fixtures.Clone.__call__") as exec_clone:
                 try:
-                    ds2 = get_cached_dataset(url, name, version, keys)
+                    ds2 = get_cached_dataset(url, version, keys)
                 except AssertionError:
                     assert_true(invalid_version)
             exec_clone.assert_not_called()
@@ -170,8 +164,8 @@ def test_cached_dataset(cache_dir):
     # patch DATALAD_TESTS_CACHE to not use the actual cache with
     # the test testing that very cache.
     cache_dir = Path(cache_dir)
-
     ds_url = "https://github.com/datalad/testrepo--minimalds"
+    name_in_cache = url2filename(ds_url)
     annexed_file = Path("inannex") / "animated.gif"
 
     with patch("datalad.tests.fixtures.DATALAD_TESTS_CACHE", new=cache_dir):
@@ -184,7 +178,7 @@ def test_cached_dataset(cache_dir):
             assert_not_in(cache_dir, ds.pathobj.parents)
             assert_result_count(ds.siblings(), 1, type="sibling",
                                 name="origin",
-                                url=str(cache_dir / "testrepo--minimalds"))
+                                url=str(cache_dir / name_in_cache))
             here = ds.config.get("annex.uuid")
             origin = ds.config.get("remote.origin.annex-uuid")
             where = ds.repo.whereis(str(annexed_file))
@@ -201,7 +195,7 @@ def test_cached_dataset(cache_dir):
             assert_not_in(cache_dir, ds.pathobj.parents)
             assert_result_count(ds.siblings(), 1, type="sibling",
                                 name="origin",
-                                url=str(cache_dir / "testrepo--minimalds"))
+                                url=str(cache_dir / name_in_cache))
             here = ds.config.get("annex.uuid")
             origin = ds.config.get("remote.origin.annex-uuid")
             where = ds.repo.whereis(str(annexed_file))
@@ -218,7 +212,7 @@ def test_cached_dataset(cache_dir):
             assert_not_in(cache_dir, ds.pathobj.parents)
             assert_result_count(ds.siblings(), 1, type="sibling",
                                 name="origin",
-                                url=str(cache_dir / "testrepo--minimalds"))
+                                url=str(cache_dir / name_in_cache))
             # origin is the same cached dataset, that got this content in
             # decorated_test2 before. Should still be there. But "here" we
             # didn't request it
@@ -230,7 +224,8 @@ def test_cached_dataset(cache_dir):
 
             return ds.pathobj, ds.repo.pathobj
 
-        @cached_dataset(url=ds_url, name="different")
+        @cached_dataset(url=ds_url,
+                        version="541cf855d13c2a338ff2803d4488daf0035e568f")
         def decorated_test4(ds):
             # we get a Dataset instance
             assert_is_instance(ds, Dataset)
@@ -238,25 +233,7 @@ def test_cached_dataset(cache_dir):
             assert_not_in(cache_dir, ds.pathobj.parents)
             assert_result_count(ds.siblings(), 1, type="sibling",
                                 name="origin",
-                                url=str(cache_dir / "different"))
-            here = ds.config.get("annex.uuid")
-            origin = ds.config.get("remote.origin.annex-uuid")
-            where = ds.repo.whereis(str(annexed_file))
-            assert_not_in(here, where)
-            assert_not_in(origin, where)
-
-            return ds.pathobj, ds.repo.pathobj
-
-        @cached_dataset(url=ds_url,
-                        version="541cf855d13c2a338ff2803d4488daf0035e568f")
-        def decorated_test5(ds):
-            # we get a Dataset instance
-            assert_is_instance(ds, Dataset)
-            # it's a clone in a temp. location, not within the cache
-            assert_not_in(cache_dir, ds.pathobj.parents)
-            assert_result_count(ds.siblings(), 1, type="sibling",
-                                name="origin",
-                                url=str(cache_dir / "testrepo--minimalds"))
+                                url=str(cache_dir / name_in_cache))
             # origin is the same cached dataset, that got this content in
             # decorated_test2 before. Should still be there. But "here" we
             # didn't request it
@@ -289,6 +266,7 @@ def test_cached_url(cache_dir):
     cache_dir = Path(cache_dir)
 
     ds_url = "https://github.com/datalad/testrepo--minimalds"
+    name_in_cache = url2filename(ds_url)
     annexed_file = Path("inannex") / "animated.gif"
     annexed_file_key = "MD5E-s144625--4c458c62b7ac8ec8e19c8ff14b2e34ad.gif"
 
@@ -297,7 +275,7 @@ def test_cached_url(cache_dir):
         @cached_url(url=ds_url)
         def decorated_test1(url):
             # we expect a file-scheme url to a cached version of `ds_url`
-            expect_origin_path = cache_dir / "testrepo--minimalds"
+            expect_origin_path = cache_dir / name_in_cache
             assert_equal(expect_origin_path.as_uri(),
                          url)
             origin = Dataset(expect_origin_path)
@@ -306,11 +284,11 @@ def test_cached_url(cache_dir):
 
         decorated_test1()
 
-        @cached_url(url=ds_url, name="different", keys=annexed_file_key)
+        @cached_url(url=ds_url, keys=annexed_file_key)
         def decorated_test2(url):
             # we expect a file-scheme url to a "different" cached version of
             # `ds_url`
-            expect_origin_path = cache_dir / "different"
+            expect_origin_path = cache_dir / name_in_cache
             assert_equal(expect_origin_path.as_uri(),
                          url)
             origin = Dataset(expect_origin_path)
