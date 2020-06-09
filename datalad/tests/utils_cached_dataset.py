@@ -25,6 +25,11 @@ def url2filename(url):
     # TODO: Not really important for now, but there should be a more
     #       sophisticated approach to replace. May be just everything that
     #       isn't alphanumeric? Or simply hash the URL?
+    #       URL: Will include version eventually. Would need parsing to hash
+    #       w/o any parameters. Having separate clones per requested version
+    #       would defy point of cache, particularly wrt downloading content.
+    #       Depends on usecase, of course, but immediate one is about container
+    #       images -> not cheap.
     # make it a Path, too, so pathlib can raise if we are creating an invalid
     # path on some system we run the tests on.
     return Path(
@@ -90,7 +95,7 @@ def get_cached_dataset(url, version=None, keys=None):
     # have it, there's no need for an update. Otherwise it gets tricky, because
     # this is a cache, not a checkout a test would operate on. It needs to
     # behave as if it was the thing at `url` from the point of view of the test
-    # using it (cloning/getting content from here). We would nee to update all
+    # using it (cloning/getting content from here). We would need to update all
     # references, not just fetch them!
     #
     # Can we even (cheaply) tell whether `version` is an absolute reference
@@ -175,7 +180,7 @@ def cached_dataset(f, url=None, version=None, paths=None):
                 ds.repo.get(keys, key=True)
                 clone_ds.repo.fsck(remote='origin', fast=True)
 
-            clone_ds.get(ensure_list(paths))
+            clone_ds.get(paths)
         return f(*(arg[:-1] + (clone_ds,)), **kw)
 
     return newfunc

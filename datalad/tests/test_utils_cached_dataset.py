@@ -10,6 +10,7 @@ from datalad.tests.utils_cached_dataset import (
     url2filename
 )
 from datalad.utils import (
+    ensure_list,
     opj,
     Path,
 )
@@ -72,9 +73,11 @@ def test_get_cached_dataset(cache_dir):
              None,
              AnnexRepo),
             # try a plain git repo to make sure we can deal with that:
-            # Note, that we need it twice to not blow up the test when Clone
-            # is patched, resulting in a MagicMock instead of a Dataset instance
-            # within get_cached_dataset.
+            # Note, that we first need a test case w/o a `key` parameter to not
+            # blow up the test when Clone is patched, resulting in a MagicMock
+            # instead of a Dataset instance within get_cached_dataset. In the
+            # second case it's already cached then, so the patched Clone is
+            # never executed.
             ("https://github.com/datalad/datalad.org",
              None,
              None,
@@ -97,28 +100,18 @@ def test_get_cached_dataset(cache_dir):
                 except AssertionError:
                     # should happen only if `version` wasn't found. Implies
                     # that the dataset exists in cache (although not returned
-                    # due to execpetion)
+                    # due to exception)
                     assert_true(version)
                     assert_false(Dataset(target).repo.commit_exists(version))
                     # mark for later assertions (most of them should still hold
                     # true)
                     invalid_version = True
 
-            if not in_cache_before:
-                # clone was called
-                # Note: assert_called was only introduced in 3.6, while
-                # assert_not_called exists in 3.5 already. As we test for python
-                # 3.5, we need to solve it differently. At the same time the
-                # test isn't about the precise call as required by
-                # assert_called_with.
-                # -> just negate assert_not_called
-                assert_raises(AssertionError, exec_clone.assert_not_called)
-            else:
-                exec_clone.assert_not_called()
+            assert_equal(exec_clone.call_count, 0 if in_cache_before else 1)
 
             # Patch prevents actual execution. Now do it for real. Note, that
             # this might be necessary for content retrieval even if dataset was
-            # in cache before,
+            # in cache before.
             try:
                 ds = get_cached_dataset(url, version, keys)
             except AssertionError:
@@ -130,26 +123,15 @@ def test_get_cached_dataset(cache_dir):
             assert_equal(target, ds.pathobj)
             assert_is_instance(ds.repo, cls)
 
-            if keys and not invalid_version:
+            if keys and not invalid_version and \
+                    AnnexRepo.is_valid_repo(ds.path):
                 # Note: it's not supposed to get that content if passed
                 # `version` wasn't available. get_cached_dataset would then
                 # raise before and not download anything only to raise
                 # afterwards.
-                # Note2 / TODO: We currently have no method to check whether a
-                # particular is locally present. Strangely enough even
-                # annex-checkpresentkey doesn't allow to specify "here" as the
-                # remote to check. Therefore being somewhat inconsistent with
-                # the `test_cases` approach here, assuming we know the path to
-                # the key. At least make that assumption explicit, so addition
-                # of a test case w/ different key will lead to failure here.
-                # However, there should be a better solution!
-                assert_equal(keys, annexed_file_key)
-
-                has_content = ds.repo.file_has_content(annexed_file)
-                assert_true(
-                    all(has_content) if isinstance(has_content, list)
-                    else has_content
-                )
+                here = ds.config.get("annex.uuid")
+                where = ds.repo.whereis(ensure_list(keys), key=True)
+                assert_true(all(here in remotes for remotes in where))
 
             # version check. Note, that all `get_cached_dataset` is supposed to
             # do, is verifying, that specified version exists - NOT check it
